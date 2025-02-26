@@ -69,6 +69,11 @@ function prompt {
 # Variables #
 #############
 
+# Archivo de registro
+logfile="$(pwd)/nextcloud_automated_install_$(date +'%d-%m-%Y_%H-%M').log"
+touch "$logfile"
+echo "Archivo log generado en $logfile"
+
 # Contraseña de la base de datos
 echo -e "\nDesea ingresar manualmente el usuario y la contraseña de la base de datos? (s/N): \c"
 read -n 1 -r db_manual
@@ -147,7 +152,7 @@ fi
 #########################
 
 echo -e "\n----  Actualizando los paquetes del sistema...  ----"
-if sudo apt update >/dev/null && sudo apt upgrade -y >/dev/null; then
+if sudo apt update 2>&1 | sudo tee -a "$logfile" && sudo apt upgrade -y 2>&1 | sudo tee -a "$logfile"; then
     echo "Paquetes actualizados."
 else
     echo "No se puedieron actualizar los paquetes. Saliendo..."
@@ -162,7 +167,7 @@ echo -e "\n----  Instalando dependencias...  ----"
 if sudo apt install -y apache2 mariadb-server \
     libapache2-mod-php php-bz2 php-gd php-mysql php-curl \
     php-mbstring php-imagick php-zip php-ctype php-curl php-dom php-json php-posix \
-    php-bcmath php-xml php-intl php-gmp zip unzip wget openssl >/dev/null; then
+    php-bcmath php-xml php-intl php-gmp zip unzip wget openssl 2>&1 | sudo tee -a "$logfile"; then
     echo "Dependencias instaladas."
 else
     echo "No se pudieron instalar las dependencias. Saliendo..."
@@ -174,7 +179,7 @@ fi
 #########################################
 
 echo -e "\n----  Habilitando los módulos de Apache...  ----"
-if sudo a2enmod rewrite dir mime env headers ssl >/dev/null; then
+if sudo a2enmod rewrite dir mime env headers ssl 2>&1 | sudo tee -a "$logfile"; then
     echo "Módulos habilitados."
 else
     echo "No se pudieron habilitar los módulos. Saliendo..."
@@ -210,14 +215,14 @@ echo -e "\n----  Descargando Nextcloud...  ----"
 if [ -f latest.zip ]; then
     sudo rm -f latest.zip
 fi
-if sudo wget -q https://download.nextcloud.com/server/releases/latest.zip >/dev/null; then
+if sudo wget -q https://download.nextcloud.com/server/releases/latest.zip 2>&1 | sudo tee -a "$logfile"; then
     echo "Nextcloud descargado."
 else
     echo "No se pudo descargar Nextcloud. Saliendo..."
     exit
 fi
 echo -e "\n----  Descomprimiendo Nextcloud...  ----"
-if sudo unzip latest.zip >/dev/null; then
+if sudo unzip latest.zip 2>&1 | sudo tee -a "$logfile"; then
     echo "Nextcloud descomprimido."
     sudo rm -f latest.zip
 else
@@ -252,7 +257,7 @@ echo -e "\n----  Configurando Nextcloud...  ----"
 # Permite realizar diversas tareas administrativas como la instalación, configuración, actualización y mantenimiento de Nextcloud.
 # Se ejecuta la instalación como el usuario www-data con las credenciales de base de datos y administrador especificadas.
 if sudo -u www-data php occ maintenance:install --database "mysql" --database-name "nextcloud" \
-    --database-user "$db_user" --database-pass "$db_password" --admin-user "$admin_user" --admin-pass "$admin_password" >/dev/null; then
+    --database-user "$db_user" --database-pass "$db_password" --admin-user "$admin_user" --admin-pass "$admin_password" 2>&1 | sudo tee -a "$logfile"; then
     echo "Nextcloud configurado."
 else
     echo "No se pudo configurar Nextcloud. Saliendo..."
@@ -293,6 +298,8 @@ prompt ESTADO "Estado/Provincia (ST)" "UnknownState"
 prompt CIUDAD "Ciudad/Localidad (L)" "UnknownCity"
 prompt ORG "Organización (O)" "AnonymousOrg"
 prompt UO "Unidad organizativa (OU)" "IT"
+prompt NC "Dominio o IP" "$dominio" # Aún no se usa
+# TODO Aquí podría haber otra entrada para el dominio en caso de que se use fuera del ámbito local, en tal caso, la configuración de los dominios de confianza debería estar luego de este apartado y usar la variable NC en lugar de dominio
 
 # Mostrar los valores elegidos
 echo "Generando certificado con los siguientes datos:"
@@ -301,7 +308,7 @@ echo "C=$PAIS, ST=$ESTADO, L=$CIUDAD, O=$ORG, OU=$UO"
 # Generar certificado autofirmado
 if openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
     -keyout "$cert_dir/nextcloud.key" -out "$cert_dir/nextcloud.crt" \
-    -subj "/C=$PAIS/ST=$ESTADO/L=$CIUDAD/O=$ORG/OU=$UO/CN=$dominio" >/dev/null; then
+    -subj "/C=$PAIS/ST=$ESTADO/L=$CIUDAD/O=$ORG/OU=$UO/CN=$dominio" 2>&1 | sudo tee -a "$logfile"; then
     # C = Código del país (ejemplo: AR para Argentina, US para Estados Unidos).
     # ST = Estado o provincia.
     # L = Ciudad o localidad.
@@ -318,6 +325,7 @@ fi
 # Crear archivo de configuración para Nextcloud
 cat >"$apache_conf" <<EOF
 <VirtualHost *:$http_port>
+    ServerName $dominio
     ServerAdmin admin@$dominio
     DocumentRoot "$nextcloud_dir"
     
@@ -370,10 +378,10 @@ sudo systemctl restart apache2
 ###########################
 
 if sudo systemctl is-active --quiet apache2; then
-    if cat $config_file | grep "$ip" >/dev/null; then
+    if cat $config_file | grep -e "$ip" -e "$dominio" 2>&1 | sudo tee -a "$logfile"; then
         echo "Dirección IP local agregada a los dominios de confianza."
         echo "Nextcloud está instalado y configurado correctamente."
-        echo "Puede acceder a Nextcloud en http://$dominio/ o http://localhost/."
+        echo "Puede acceder a Nextcloud en http://$dominio/, http://$ip o http://localhost/."
     else
         echo "No se pudo agregar la IP a los dominios de confianza."
         echo "Nextcloud está instalado y configurado correctamente."
@@ -386,6 +394,6 @@ if sudo systemctl is-active --quiet apache2; then
         echo -e "\nRecuerde cambiar la contraseña del administrador de Nextcloud por una más segura desde la configuración."
     fi
 else
-    echo "No se pudo reiniciar Apache. Saliendo..."
+    echo "Apache no funciona. Saliendo..."
     exit
 fi
