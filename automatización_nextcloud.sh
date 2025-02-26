@@ -12,7 +12,7 @@
 # Funciones #
 #############
 
-function agregar_linea() {
+function agregar_linea {
     # Modo de uso: agregar_linea archivo.txt "cadena a buscar" "línea a agregar"
 
     # Verificar si se proporcionaron los argumentos correctos
@@ -61,6 +61,16 @@ function prompt {
         eval "$var_name=\"$default_value\""
     else
         eval "$var_name=\"$input_value\""
+    fi
+}
+
+function descargar_nextcloud {
+    echo -e "\n----  Descargando Nextcloud...  ----"
+    if sudo wget -q https://download.nextcloud.com/server/releases/latest.zip | sudo tee -a "$logfile" >/dev/null; then
+        echo -e "Nextcloud descargado."
+    else
+        echo -e "No se pudo descargar Nextcloud. Saliendo... \nRevise el archivo de registro ($logfile) para ver el error en detalle." >&2
+        exit 1
     fi
 }
 
@@ -138,7 +148,7 @@ linea_a_agregar2="    1 => '$dominio', // Generado con script de automatización
 if ! grep -q -e "Debian GNU/Linux 12" -e "bookworm" /etc/os-release; then
     if ! grep -q "Debian GNU/Linux" /etc/os-release || [ "$(grep -oP '(?<=VERSION_ID=")[0-9]+' /etc/os-release)" -lt 12 ]; then
         echo -e "Este script está diseñado para ejecutarse en Debian 12 o posterior. Saliendo..."
-        exit 1
+        # exit 1
     fi
 fi
 
@@ -222,16 +232,27 @@ cd /var/www || {
     echo -e "Error al cambiar directorio. Saliendo... \nRevise el archivo de registro ($logfile) para ver el error en detalle." >&2
     exit 1
 }
-echo -e "\n----  Descargando Nextcloud...  ----"
+
 if [ -f latest.zip ]; then
-    sudo rm -f latest.zip
-fi
-if sudo wget -q https://download.nextcloud.com/server/releases/latest.zip | sudo tee -a "$logfile" >/dev/null; then
-    echo -e "Nextcloud descargado."
+    echo -e "El archivo de Nextcloud ya existe, a continuación se comprobará si es válido"
+    echo -e "\n----  Verificando la suma de comprobación de Nextcloud...  ----"
+    if sudo wget -q https://download.nextcloud.com/server/releases/latest.zip.sha256 | sudo tee -a "$logfile" >/dev/null; then
+        echo -e "Suma de comprobación descargada."
+        if sha256sum -c latest.zip.sha256 | sudo tee -a "$logfile" >/dev/null; then
+            echo -e "La suma de comprobación es válida. No hace falta descargar otra vez Nextcloud."
+        else
+            echo -e "La suma de comprobación no es válida. Se descargará Nextcloud desde cero." >&2
+            sudo rm -f latest.zip latest.zip.sha256
+            descargar_nextcloud
+        fi
+    else
+        echo -e "No se pudo descargar la suma de comprobación. Se decargará Nextcloud desde cero." >&2
+        sudo rm -f latest.zip
+    fi
 else
-    echo -e "No se pudo descargar Nextcloud. Saliendo... \nRevise el archivo de registro ($logfile) para ver el error en detalle." >&2
-    exit 1
+    descargar_nextcloud
 fi
+
 echo -e "\n----  Descomprimiendo Nextcloud...  ----"
 if sudo unzip latest.zip | sudo tee -a "$logfile" >/dev/null; then
     echo -e "Nextcloud descomprimido."
@@ -240,16 +261,6 @@ else
     echo -e "No se pudo descomprimir Nextcloud. Saliendo... \nRevise el archivo de registro ($logfile) para ver el error en detalle." >&2
     exit 1
 fi
-# cd nextcloud || {
-#     echo -e "Error al cambiar directorio. Saliendo... \nRevise el archivo de registro ($logfile) para ver el error en detalle." >&2
-#     exit 1
-# }
-# sudo mv -- .* * ../
-# cd .. || {
-#     echo -e "Error al cambiar directorio. Saliendo... \nRevise el archivo de registro ($logfile) para ver el error en detalle." >&2
-#     exit 1
-# }
-# sudo rmdir /var/www/html/nextcloud
 
 sudo chown -R www-data:www-data /var/www/nextcloud
 
