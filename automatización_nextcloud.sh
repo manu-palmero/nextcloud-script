@@ -10,6 +10,40 @@
 # Nota: Este script no maneja la configuración de copias de seguridad. Se recomienda configurar copias de seguridad periódicas.
 
 #############
+# Funciones #
+#############
+agregar_linea() {
+    # Modo de uso: agregar_linea archivo.txt "cadena a buscar" "línea a agregar"
+
+    # Verificar si se proporcionaron los argumentos correctos
+    if [ "$#" -ne 3 ]; then
+        echo "Error: Se esperaban 3 argumentos, pero se recibieron $#."
+        return 1
+    fi
+
+    local archivo="$1"
+    local cadena_a_buscar="$2"
+    local linea_a_agregar="$3"
+
+    # Crear un archivo temporal para realizar las modificaciones
+    tempfile=$(mktemp)
+
+    # Iterar sobre cada línea del archivo
+    while IFS= read -r linea; do
+        # Agrega el contenido de la variable 'linea' al archivo temporal especificado por 'tempfile'.
+        echo "$linea" >>"$tempfile"
+        # Si la línea contiene la palabra a buscar, añadir la nueva línea debajo
+        if [[ "$linea" == *"$cadena_a_buscar"* ]]; then # Cadena a buscar
+            echo "$linea_a_agregar" >>"$tempfile"       # Línea a agregar
+        fi
+    done <"$1" # Archivo de entrada
+
+    # Reemplazar el archivo original con el archivo temporal modificado y eliminar el archivo temporal
+    sudo mv "$tempfile" "$archivo"
+    sudo rm -f "$tempfile"
+}
+
+#############
 # Variables #
 #############
 echo -e "\nDesea ingresar manualmente el usuario y la contraseña de la base de datos? (s/N): \c"
@@ -181,22 +215,7 @@ sudo chmod 777 $config_file
 # Crear copia de seguridad de las configuraciones originales
 sudo cp $config_file $backup_config
 
-# Crear un archivo temporal para realizar las modificaciones
-tempfile=$(mktemp)
-
-# Iterar sobre cada línea del archivo
-while IFS= read -r linea; do
-    # Agrega el contenido de la variable 'linea' al archivo temporal especificado por 'tempfile'.
-    echo "$linea" >>"$tempfile"
-    # Si la línea contiene la palabra a buscar, añadir la nueva línea debajo
-    if [[ "$linea" == *"$cadena_a_buscar"* ]]; then
-        echo "$linea_a_agregar" >>"$tempfile"
-    fi
-done <"$config_file"
-
-# Reemplazar el archivo original con el archivo temporal modificado y eliminar el archivo temporal
-sudo mv "$tempfile" "$config_file"
-sudo rm -f "$tempfile"
+agregar_linea $config_file "$cadena_a_buscar" "$linea_a_agregar"
 
 # Conceder permisos adecuados al archivo de configuración, si no se conceden, Nextcloud no funcionará correctamente
 sudo chmod 644 $config_file
