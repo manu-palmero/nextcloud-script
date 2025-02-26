@@ -284,8 +284,6 @@ sudo systemctl restart apache2
 #######################
 
 mkdir -p "$cert_dir"
-# sudo mkdir -p /etc/ssl/certs
-# sudo mkdir -p /etc/ssl/private
 
 # Pedir información al usuario
 echo "Introduce los datos para el certificado SSL. Deja en blanco para usar valores genéricos."
@@ -331,7 +329,7 @@ cat >"$apache_conf" <<EOF
     CustomLog \${APACHE_LOG_DIR}/nextcloud-http-access.log combined
 </VirtualHost>
 
-<VirtualHost *:$http_port>
+<VirtualHost *:$https_port>
     ServerAdmin admin@$dominio
     DocumentRoot "$nextcloud_dir"
 
