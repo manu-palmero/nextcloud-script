@@ -136,8 +136,10 @@ linea_a_agregar2="    1 => '$dominio', // Generado con script de automatización
 
 # Verificar si el script se está ejecutando en Debian 12
 if ! grep -q -e "Debian GNU/Linux 12" -e "bookworm" /etc/os-release; then
-    echo -e "Este script está diseñado para ejecutarse en Debian 12 (bookworm). Saliendo..."
-    exit 1
+    if ! grep -q "Debian GNU/Linux" /etc/os-release || [ "$(grep -oP '(?<=VERSION_ID=")[0-9]+' /etc/os-release)" -lt 12 ]; then
+        echo -e "Este script está diseñado para ejecutarse en Debian 12 o posterior. Saliendo..."
+        exit 1
+    fi
 fi
 
 # Verificar permiso de superusuario
