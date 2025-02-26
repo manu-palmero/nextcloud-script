@@ -385,7 +385,7 @@ if sudo systemctl is-active --quiet apache2; then
     echo " - El usuario administrador de Nextcloud es '$admin_user'."
     echo " - La contraseña del administrador de Nextcloud es '$admin_password'."
     if [[ ! "$admin_manual" =~ ^[sS]$ ]]; then
-        echo "Recuerde cambiar la contraseña del administrador de Nextcloud por una más segura desde la configuración."
+        echo -e "\nRecuerde cambiar la contraseña del administrador de Nextcloud por una más segura desde la configuración."
     fi
 else
     echo "No se pudo reiniciar Apache. Saliendo..."
