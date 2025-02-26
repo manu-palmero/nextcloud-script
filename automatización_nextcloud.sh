@@ -46,6 +46,8 @@ agregar_linea() {
 #############
 # Variables #
 #############
+
+# Contraseña de la base de datos
 echo -e "\nDesea ingresar manualmente el usuario y la contraseña de la base de datos? (s/N): \c"
 read -n 1 -r db_manual
 if [[ "$db_manual" =~ ^[sS]$ ]]; then
@@ -58,6 +60,7 @@ else
     db_password="password"
 fi
 
+# Contraseña de administrador de Nextcloud
 echo -e "\nDesea ingresar manualmente el usuario y la contraseña del administrador de Nextcloud? (s/N): \c"
 read -n 1 -r admin_manual
 if [[ "$admin_manual" =~ ^[sS]$ ]]; then
@@ -69,20 +72,33 @@ else
     admin_user="admin"
     admin_password="password"
 fi
-# Ruta del archivo de configuración de Nextcloud
-config_file="/var/www/html/config/config.php"
-# Ruta del archivo de copia de seguridad del archivo de configuración de Nextcloud
-backup_config="/var/www/html/config/config.php.backup"
-# Cadena a buscar en el archivo de configuración de Nextcloud
-cadena_a_buscar="0 => 'localhost',"
-# Dirección IP de la máquina
+
+nextcloud_dir="/var/www/nextcloud" # Directorio de Nextcloud
+
+http_port="8080" # Puerto http
+
+https_port="5555" # Puerto https
+
+dominio="$(hostname).local" # Dominio
+
+cert_dir="/etc/ssl/nextcloud" # Directorio en donde se guardarán los certificados
+
+apache_conf="/etc/apache2/sites-available" # Directorio de configuración de Apache
+
+config_file="$nextcloud_dir/config/config.php" # Ruta del archivo de configuración de Nextcloud
+
+backup_config="/var/www/html/config/config.php.backup" # Ruta del archivo de copia de seguridad del archivo de configuración de Nextcloud
+
+cadena_a_buscar="0 => 'localhost'," # Cadena a buscar en el archivo de configuración de Nextcloud
+
+ip=$(hostname -I) # Dirección IP de la máquina
 # Nota: Esto aún no maneja múltiples direcciones IP en la misma máquina, pero se puede mejorar en el futuro
-ip=$(hostname -I)
-# Eliminar todos los espacios de la variable 'ip' y asignar el resultado de nuevo a 'ip'
+
+ip=${ip// /} # Eliminar todos los espacios de la variable 'ip' y asignar el resultado de nuevo a 'ip'
 # Al usar hostname -I, se obtiene una cadena con la dirección IP seguida de un espacio
 # Se usa el formato ${variable//buscar/reemplazar} para reemplazar todas las ocurrencias de 'buscar' con 'reemplazar' en 'variable'
 # En este caso, 'buscar' es un espacio ' ' y 'reemplazar' es una cadena vacía ''
-ip=${ip// /}
+
 linea_a_agregar="    1 => '$ip', // Generado con script de automatización"
 
 ##########################
@@ -117,7 +133,10 @@ fi
 # Instalación de dependencias #
 ###############################
 echo -e "\n----  Instalando dependencias...  ----"
-if sudo apt install -y apache2 mariadb-server libapache2-mod-php php-bz2 php-gd php-mysql php-curl php-mbstring php-imagick php-zip php-ctype php-curl php-dom php-json php-posix php-bcmath php-xml php-intl php-gmp zip unzip wget >/dev/null; then
+if sudo apt install -y apache2 mariadb-server \
+    libapache2-mod-php php-bz2 php-gd php-mysql php-curl \
+    php-mbstring php-imagick php-zip php-ctype php-curl php-dom php-json php-posix \
+    php-bcmath php-xml php-intl php-gmp zip unzip wget openssl >/dev/null; then
     echo "Dependencias instaladas."
 else
     echo "No se pudieron instalar las dependencias. Saliendo..."
@@ -128,7 +147,7 @@ fi
 # Habilitación de los módulos de apache #
 #########################################
 echo -e "\n----  Habilitando los módulos de Apache...  ----"
-if sudo a2enmod rewrite dir mime env headers >/dev/null; then
+if sudo a2enmod rewrite dir mime env headers ssl >/dev/null; then
     echo "Módulos habilitados."
 else
     echo "No se pudieron habilitar los módulos. Saliendo..."
@@ -140,7 +159,11 @@ sudo systemctl restart apache2
 # Configuración de MySQL #
 ##########################
 echo -e "\n----  Configurando MySQL para Nextcloud... ----"
-if sudo mysql -e "CREATE USER IF NOT EXISTS '$db_user'@'localhost' IDENTIFIED BY '$db_password'; CREATE DATABASE IF NOT EXISTS nextcloud CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; GRANT ALL PRIVILEGES ON nextcloud.* TO '$db_user'@'localhost'; FLUSH PRIVILEGES;"; then
+if sudo mysql -e \
+    "CREATE USER IF NOT EXISTS '$db_user'@'localhost' IDENTIFIED BY '$db_password'; \
+        CREATE DATABASE IF NOT EXISTS nextcloud CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; \
+        GRANT ALL PRIVILEGES ON nextcloud.* TO '$db_user'@'localhost'; \
+        FLUSH PRIVILEGES;"; then
     echo "MySQL configurado para Nextcloud."
 else
     echo "No se pudo configurar MySQL para Nextcloud. Saliendo..."
@@ -185,7 +208,7 @@ fi
 
 sudo chown -R www-data:www-data /var/www/nextcloud
 
-cd /var/www/nextcloud || {
+cd $nextcloud_dir || {
     echo "Error al cambiar directorio. Saliendo..."
     exit
 }
@@ -198,7 +221,8 @@ echo -e "\n----  Configurando Nextcloud...  ----"
 # El comando occ (ownCloud Console) es una herramienta de línea de comandos para administrar Nextcloud.
 # Permite realizar diversas tareas administrativas como la instalación, configuración, actualización y mantenimiento de Nextcloud.
 # Se ejecuta la instalación como el usuario www-data con las credenciales de base de datos y administrador especificadas.
-if sudo -u www-data php occ maintenance:install --database "mysql" --database-name "nextcloud" --database-user "$db_user" --database-pass "$db_password" --admin-user "$admin_user" --admin-pass "$admin_password" >/dev/null; then
+if sudo -u www-data php occ maintenance:install --database "mysql" --database-name "nextcloud" \
+    --database-user "$db_user" --database-pass "$db_password" --admin-user "$admin_user" --admin-pass "$admin_password" >/dev/null; then
     echo "Nextcloud configurado."
 else
     echo "No se pudo configurar Nextcloud. Saliendo..."
@@ -224,6 +248,74 @@ sudo chown www-data:www-data $config_file
 # Reinicar el servicio de Apache para aplicar los cambios
 sudo systemctl restart apache2
 
+# Configuración de PHP
+for php_ini in /etc/php/*/apache2/php.ini; do
+    sudo sed -i 's/upload_max_filesize = .*/upload_max_filesize = 1G/' "$php_ini"
+    sudo sed -i 's/post_max_size = .*/post_max_size = 1G/' "$php_ini"
+    sudo sed -i 's/memory_limit = .*/memory_limit = 512M/' "$php_ini"
+    sudo sed -i 's/;opcache.enable=.*/opcache.enable=1/' "$php_ini"
+    sudo sed -i 's/;opcache.enable_cli=.*/opcache.enable_cli=1/' "$php_ini"
+done
+sudo systemctl restart apache2
+
+
+#######################
+# Configuración HTTPS #
+#######################
+mkdir -p "$cert_dir"
+# sudo mkdir -p /etc/ssl/certs
+# sudo mkdir -p /etc/ssl/private
+
+# Generar certificado autofirmado
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout "$cert_dir/nextcloud.key" -out "$cert_dir/nextcloud.crt" \
+    -subj "/C=XX/ST=State/L=City/O=Company/OU=Org/CN=$dominio"
+# C = Código del país (ejemplo: AR para Argentina, US para Estados Unidos).
+# ST = Estado o provincia.
+# L = Ciudad o localidad.
+# O = Nombre de la organización (se puede poner el nombre personal o el de una empresa).
+# OU = Unidad organizativa (se puede dejar vacío dejarlo vacío o poner algo como "IT").
+# CN = Nombre común, que debe ser el dominio o la IP del servidor.
+
+# Crear archivo de configuración para Nextcloud
+cat >"$apache_conf" <<EOF
+<VirtualHost *:$http_port>
+    ServerAdmin admin@$dominio
+    DocumentRoot "$nextcloud_dir"
+    
+    RewriteEngine On
+    RewriteCond %{HTTPS} off
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}:$https_port/\$1 [R=301,L]
+
+    ErrorLog \${APACHE_LOG_DIR}/nextcloud-http-error.log
+    CustomLog \${APACHE_LOG_DIR}/nextcloud-http-access.log combined
+</VirtualHost>
+
+<VirtualHost *:$http_port>
+    ServerAdmin admin@$dominio
+    DocumentRoot "$nextcloud_dir"
+
+    SSLEngine on
+    SSLCertificateFile "$cert_dir/nextcloud.crt"
+    SSLCertificateKeyFile "$cert_dir/nextcloud.key"
+
+    <Directory "$nextcloud_dir">
+        Require all granted
+        AllowOverride All
+        Options FollowSymLinks MultiViews
+    </Directory>
+
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+
+    ErrorLog \${APACHE_LOG_DIR}/nextcloud-https-error.log
+    CustomLog \${APACHE_LOG_DIR}/nextcloud-https-access.log combined
+</VirtualHost>
+EOF
+
+###########################
+# Finalización del script #
+###########################
+
 if sudo systemctl is-active --quiet apache2; then
     if cat $config_file | grep "$ip" >/dev/null; then
         echo "Dirección IP local agregada a los dominios de confianza."
@@ -233,7 +325,8 @@ if sudo systemctl is-active --quiet apache2; then
         echo "No se pudo agregar la IP a los dominios de confianza."
         echo "Nextcloud está instalado y configurado correctamente."
         echo "Puede acceder a Nextcloud en http://localhost/."
-        echo "Para acceder a Nextcloud a través de la dirección IP, agregue la dirección IP a la lista de dominios de confianza en el archivo config.php."
+        echo "Para acceder a Nextcloud a través de la dirección IP, agregue la dirección IP \
+        a la lista de dominios de confianza en el archivo config.php."
     fi
     echo " - El usuario administrador de Nextcloud es '$admin_user'."
     echo " - La contraseña del administrador de Nextcloud es '$admin_password'."
