@@ -188,7 +188,7 @@ echo -e "\n----  Instalando dependencias...  ----"
 if sudo apt install -y apache2 mariadb-server \
     libapache2-mod-php php-bz2 php-gd php-mysql php-curl \
     php-mbstring php-imagick php-zip php-ctype php-curl php-dom php-json php-posix \
-    php-bcmath php-xml php-intl php-gmp zip unzip wget openssl | sudo tee -a "$logfile" >/dev/null; then
+    php-bcmath php-xml php-intl php-gmp zip unzip wget openssl coreutils | sudo tee -a "$logfile" >/dev/null; then
     echo -e "Dependencias instaladas."
 else
     echo -e "No se pudieron instalar las dependencias. Saliendo... \nRevise el archivo de registro ($logfile) para ver el error en detalle." >&2
@@ -345,7 +345,7 @@ else
 fi
 
 # Crear archivo de configuración para Nextcloud
-cat >"$apache_conf" <<EOF
+cat >"$apache_conf" <<EOF  # TODO Evaluar la configuración y corregir si es necesario
 <VirtualHost *:$http_port>
     ServerName $dominio
     ServerAdmin admin@$dominio
