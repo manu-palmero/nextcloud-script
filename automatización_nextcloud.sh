@@ -18,7 +18,7 @@ function agregar_linea() {
 
     # Verificar si se proporcionaron los argumentos correctos
     if [ "$#" -ne 3 ]; then
-        echo "Error: Se esperaban 3 argumentos, pero se recibieron $#."
+        echo -e "Error: Se esperaban 3 argumentos, pero se recibieron $#."
         return 1
     fi
 
@@ -32,10 +32,10 @@ function agregar_linea() {
     # Iterar sobre cada línea del archivo
     while IFS= read -r linea; do
         # Agrega el contenido de la variable 'linea' al archivo temporal especificado por 'tempfile'.
-        echo "$linea" >>"$tempfile"
+        echo -e "$linea" >>"$tempfile"
         # Si la línea contiene la palabra a buscar, añadir la nueva línea debajo
         if [[ "$linea" == *"$cadena_a_buscar"* ]]; then # Cadena a buscar
-            echo "$linea_a_agregar" >>"$tempfile"       # Línea a agregar
+            echo -e "$linea_a_agregar" >>"$tempfile"       # Línea a agregar
         fi
     done <"$1" # Archivo de entrada
 
@@ -49,7 +49,7 @@ function prompt {
     # Modo de uso: prompt variable "Texto de la pregunta" "Valor por defecto"
     # Verificar si se proporcionaron los argumentos correctos
     if [ "$#" -ne 3 ]; then
-        echo "Error: Se esperaban 3 argumentos, pero se recibieron $#."
+        echo -e "Error: Se esperaban 3 argumentos, pero se recibieron $#."
         return 1
     fi
 
@@ -72,15 +72,15 @@ function prompt {
 # Archivo de registro
 logfile="$(pwd)/nextcloud_automated_install_$(date +'%d-%m-%Y_%H-%M').log"
 touch "$logfile"
-echo "Archivo log generado en $logfile"
+echo -e "Archivo log generado en $logfile"
 
 # Contraseña de la base de datos
 echo -e "\nDesea ingresar manualmente el usuario y la contraseña de la base de datos? (s/N): \c"
 read -n 1 -r db_manual
 if [[ "$db_manual" =~ ^[sS]$ ]]; then
-    echo "Ingrese el nombre de usuario de la base de datos:"
+    echo -e "Ingrese el nombre de usuario de la base de datos:"
     read -r db_user
-    echo "Ingrese la contraseña de la base de datos:"
+    echo -e "Ingrese la contraseña de la base de datos:"
     read -r db_password
 else
     db_user="nextcloud"
@@ -91,9 +91,9 @@ fi
 echo -e "\nDesea ingresar manualmente el usuario y la contraseña del administrador de Nextcloud? (s/N): \c"
 read -n 1 -r admin_manual
 if [[ "$admin_manual" =~ ^[sS]$ ]]; then
-    echo "Ingrese el nombre de usuario del administrador de Nextcloud:"
+    echo -e "Ingrese el nombre de usuario del administrador de Nextcloud:"
     read -r admin_user
-    echo "Ingrese la contraseña del administrador de Nextcloud:"
+    echo -e "Ingrese la contraseña del administrador de Nextcloud:"
     read -r admin_password
 else
     admin_user="admin"
@@ -135,16 +135,16 @@ linea_a_agregar2="    1 => '$dominio', // Generado con script de automatización
 
 echo -e "\n----  Comprobando si hay permisos de root...  ----"
 if [ "$EUID" -ne 0 ]; then
-    echo "El usuario actual no es root"
-    echo "Comprobando si se puede obtener permiso de root con sudo..."
+    echo -e "El usuario actual no es root"
+    echo -e "Comprobando si se puede obtener permiso de root con sudo..."
     if sudo -v; then
-        echo "Hay permiso de root con sudo."
+        echo -e "Hay permiso de root con sudo."
     else
-        echo "No hay permiso de root, asegúrese de que el usuario actual tiene los permisos adecuados. Saliendo..."
+        echo -e "No hay permiso de root, asegúrese de que el usuario actual tiene los permisos adecuados. Saliendo... \nRevise el archivo de registro ($logfile)para ver el error en detalle."
         exit
     fi
 else
-    echo "El usuario actual es root."
+    echo -e "El usuario actual es root."
 fi
 
 #########################
@@ -153,9 +153,9 @@ fi
 
 echo -e "\n----  Actualizando los paquetes del sistema...  ----"
 if sudo apt update 2>&1 | sudo tee -a "$logfile" && sudo apt upgrade -y 2>&1 | sudo tee -a "$logfile"; then
-    echo "Paquetes actualizados."
+    echo -e "Paquetes actualizados."
 else
-    echo "No se puedieron actualizar los paquetes. Saliendo..."
+    echo -e "No se puedieron actualizar los paquetes. Saliendo... \nRevise el archivo de registro ($logfile)para ver el error en detalle."
     exit
 fi
 
@@ -168,9 +168,9 @@ if sudo apt install -y apache2 mariadb-server \
     libapache2-mod-php php-bz2 php-gd php-mysql php-curl \
     php-mbstring php-imagick php-zip php-ctype php-curl php-dom php-json php-posix \
     php-bcmath php-xml php-intl php-gmp zip unzip wget openssl 2>&1 | sudo tee -a "$logfile"; then
-    echo "Dependencias instaladas."
+    echo -e "Dependencias instaladas."
 else
-    echo "No se pudieron instalar las dependencias. Saliendo..."
+    echo -e "No se pudieron instalar las dependencias. Saliendo... \nRevise el archivo de registro ($logfile)para ver el error en detalle."
     exit
 fi
 
@@ -180,9 +180,9 @@ fi
 
 echo -e "\n----  Habilitando los módulos de Apache...  ----"
 if sudo a2enmod rewrite dir mime env headers ssl 2>&1 | sudo tee -a "$logfile"; then
-    echo "Módulos habilitados."
+    echo -e "Módulos habilitados."
 else
-    echo "No se pudieron habilitar los módulos. Saliendo..."
+    echo -e "No se pudieron habilitar los módulos. Saliendo... \nRevise el archivo de registro ($logfile)para ver el error en detalle."
     exit
 fi
 sudo systemctl restart apache2
@@ -197,9 +197,9 @@ if sudo mysql -e \
         CREATE DATABASE IF NOT EXISTS nextcloud CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; \
         GRANT ALL PRIVILEGES ON nextcloud.* TO '$db_user'@'localhost'; \
         FLUSH PRIVILEGES;"; then
-    echo "MySQL configurado para Nextcloud."
+    echo -e "MySQL configurado para Nextcloud."
 else
-    echo "No se pudo configurar MySQL para Nextcloud. Saliendo..."
+    echo -e "No se pudo configurar MySQL para Nextcloud. Saliendo... \nRevise el archivo de registro ($logfile)para ver el error en detalle."
     exit
 fi
 
@@ -208,7 +208,7 @@ fi
 #######################
 
 cd /var/www || {
-    echo "Error al cambiar directorio. Saliendo..."
+    echo -e "Error al cambiar directorio. Saliendo... \nRevise el archivo de registro ($logfile)para ver el error en detalle."
     exit
 }
 echo -e "\n----  Descargando Nextcloud...  ----"
@@ -216,26 +216,26 @@ if [ -f latest.zip ]; then
     sudo rm -f latest.zip
 fi
 if sudo wget -q https://download.nextcloud.com/server/releases/latest.zip 2>&1 | sudo tee -a "$logfile"; then
-    echo "Nextcloud descargado."
+    echo -e "Nextcloud descargado."
 else
-    echo "No se pudo descargar Nextcloud. Saliendo..."
+    echo -e "No se pudo descargar Nextcloud. Saliendo... \nRevise el archivo de registro ($logfile)para ver el error en detalle."
     exit
 fi
 echo -e "\n----  Descomprimiendo Nextcloud...  ----"
 if sudo unzip latest.zip 2>&1 | sudo tee -a "$logfile"; then
-    echo "Nextcloud descomprimido."
+    echo -e "Nextcloud descomprimido."
     sudo rm -f latest.zip
 else
-    echo "No se pudo descomprimir Nextcloud. Saliendo..."
+    echo -e "No se pudo descomprimir Nextcloud. Saliendo... \nRevise el archivo de registro ($logfile)para ver el error en detalle."
     exit
 fi
 # cd nextcloud || {
-#     echo "Error al cambiar directorio. Saliendo..."
+#     echo -e "Error al cambiar directorio. Saliendo... \nRevise el archivo de registro ($logfile)para ver el error en detalle."
 #     exit
 # }
 # sudo mv -- .* * ../
 # cd .. || {
-#     echo "Error al cambiar directorio. Saliendo..."
+#     echo -e "Error al cambiar directorio. Saliendo... \nRevise el archivo de registro ($logfile)para ver el error en detalle."
 #     exit
 # }
 # sudo rmdir /var/www/html/nextcloud
@@ -243,7 +243,7 @@ fi
 sudo chown -R www-data:www-data /var/www/nextcloud
 
 cd $nextcloud_dir || {
-    echo "Error al cambiar directorio. Saliendo..."
+    echo -e "Error al cambiar directorio. Saliendo... \nRevise el archivo de registro ($logfile)para ver el error en detalle."
     exit
 }
 
@@ -258,9 +258,9 @@ echo -e "\n----  Configurando Nextcloud...  ----"
 # Se ejecuta la instalación como el usuario www-data con las credenciales de base de datos y administrador especificadas.
 if sudo -u www-data php occ maintenance:install --database "mysql" --database-name "nextcloud" \
     --database-user "$db_user" --database-pass "$db_password" --admin-user "$admin_user" --admin-pass "$admin_password" 2>&1 | sudo tee -a "$logfile"; then
-    echo "Nextcloud configurado."
+    echo -e "Nextcloud configurado."
 else
-    echo "No se pudo configurar Nextcloud. Saliendo..."
+    echo -e "No se pudo configurar Nextcloud. Saliendo... \nRevise el archivo de registro ($logfile)para ver el error en detalle."
     exit
 fi
 
@@ -291,7 +291,7 @@ sudo systemctl restart apache2
 mkdir -p "$cert_dir"
 
 # Pedir información al usuario
-echo "Introduce los datos para el certificado SSL. Deja en blanco para usar valores genéricos."
+echo -e "Introduce los datos para el certificado SSL. Deja en blanco para usar valores genéricos."
 
 prompt PAIS "Código de país (C)" "XX"
 prompt ESTADO "Estado/Provincia (ST)" "UnknownState"
@@ -302,8 +302,8 @@ prompt NC "Dominio o IP" "$dominio" # Aún no se usa
 # TODO Aquí podría haber otra entrada para el dominio en caso de que se use fuera del ámbito local, en tal caso, la configuración de los dominios de confianza debería estar luego de este apartado y usar la variable NC en lugar de dominio
 
 # Mostrar los valores elegidos
-echo "Generando certificado con los siguientes datos:"
-echo "C=$PAIS, ST=$ESTADO, L=$CIUDAD, O=$ORG, OU=$UO"
+echo -e "Generando certificado con los siguientes datos:"
+echo -e "C=$PAIS, ST=$ESTADO, L=$CIUDAD, O=$ORG, OU=$UO"
 
 # Generar certificado autofirmado
 if openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
@@ -315,10 +315,10 @@ if openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
     # O = Nombre de la organización (se puede poner el nombre personal o el de una empresa).
     # OU = Unidad organizativa (se puede dejar vacío dejarlo vacío o poner algo como "IT").
     # CN = Nombre común, que debe ser el dominio o la IP del servidor.
-    echo "Certificado generado en $cert_dir"
+    echo -e "Certificado generado en $cert_dir"
 else
-    echo "No se pudo generar el certificado."
-    echo "Pruebe generarlo luego usando el comando: \
+    echo -e "No se pudo generar el certificado."
+    echo -e "Pruebe generarlo luego usando el comando: \
     openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout "$cert_dir/nextcloud.key" -out "$cert_dir/nextcloud.crt" -subj ""/C=$PAIS/ST=$ESTADO/L=$CIUDAD/O=$ORG/OU=$UO/CN=$dominio"""
 fi
 
@@ -379,21 +379,21 @@ sudo systemctl restart apache2
 
 if sudo systemctl is-active --quiet apache2; then
     if cat $config_file | grep -e "$ip" -e "$dominio" 2>&1 | sudo tee -a "$logfile"; then
-        echo "Dirección IP local agregada a los dominios de confianza."
-        echo "Nextcloud está instalado y configurado correctamente."
-        echo "Puede acceder a Nextcloud en http://$dominio/, http://$ip o http://localhost/."
+        echo -e "Dirección IP local agregada a los dominios de confianza."
+        echo -e "Nextcloud está instalado y configurado correctamente."
+        echo -e "Puede acceder a Nextcloud en http://$dominio/, http://$ip o http://localhost/."
     else
-        echo "No se pudo agregar la IP a los dominios de confianza."
-        echo "Nextcloud está instalado y configurado correctamente."
-        echo "Puede acceder a Nextcloud en http://localhost/."
-        echo "Para acceder a Nextcloud a través de la dirección IP, agregue la dirección IP a la lista de dominios de confianza en el archivo config.php."
+        echo -e "No se pudo agregar la IP a los dominios de confianza." >&2
+        echo -e "Nextcloud está instalado y configurado correctamente."
+        echo -e "Puede acceder a Nextcloud en http://localhost/."
+        echo -e "Para acceder a Nextcloud a través de la dirección IP, agregue la dirección IP a la lista de dominios de confianza en el archivo config.php."
     fi
-    echo " - El usuario administrador de Nextcloud es '$admin_user'."
-    echo " - La contraseña del administrador de Nextcloud es '$admin_password'."
+    echo -e " - El usuario administrador de Nextcloud es '$admin_user'."
+    echo -e " - La contraseña del administrador de Nextcloud es '$admin_password'."
     if [[ ! "$admin_manual" =~ ^[sS]$ ]]; then
         echo -e "\nRecuerde cambiar la contraseña del administrador de Nextcloud por una más segura desde la configuración."
     fi
 else
-    echo "Apache no funciona. Saliendo..."
+    echo -e "Apache no funciona. Saliendo... \nRevise el archivo de registro ($logfile)para ver el error en detalle." >&2
     exit
 fi
