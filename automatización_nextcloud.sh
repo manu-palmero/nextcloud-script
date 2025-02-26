@@ -12,7 +12,8 @@
 #############
 # Funciones #
 #############
-agregar_linea() {
+
+function agregar_linea() {
     # Modo de uso: agregar_linea archivo.txt "cadena a buscar" "línea a agregar"
 
     # Verificar si se proporcionaron los argumentos correctos
@@ -41,6 +42,27 @@ agregar_linea() {
     # Reemplazar el archivo original con el archivo temporal modificado y eliminar el archivo temporal
     sudo mv "$tempfile" "$archivo"
     sudo rm -f "$tempfile"
+}
+
+# Función para pedir datos con valor por defecto
+function prompt {
+    # Modo de uso: prompt variable "Texto de la pregunta" "Valor por defecto"
+    # Verificar si se proporcionaron los argumentos correctos
+    if [ "$#" -ne 3 ]; then
+        echo "Error: Se esperaban 3 argumentos, pero se recibieron $#."
+        return 1
+    fi
+
+    local var_name=$1
+    local prompt_text=$2
+    local default_value=$3
+
+    read -rp "$prompt_text [$default_value]: " input_value
+    if [ -z "$input_value" ]; then
+        eval "$var_name=\"$default_value\""
+    else
+        eval "$var_name=\"$input_value\""
+    fi
 }
 
 #############
@@ -99,11 +121,13 @@ ip=${ip// /} # Eliminar todos los espacios de la variable 'ip' y asignar el resu
 # Se usa el formato ${variable//buscar/reemplazar} para reemplazar todas las ocurrencias de 'buscar' con 'reemplazar' en 'variable'
 # En este caso, 'buscar' es un espacio ' ' y 'reemplazar' es una cadena vacía ''
 
-linea_a_agregar="    1 => '$ip', // Generado con script de automatización"
+linea_a_agregar="    2 => '$ip', // Generado con script de automatización"
+linea_a_agregar2="    1 => '$dominio', // Generado con script de automatización"
 
 ##########################
 # Comprobar superusuario #
 ##########################
+
 echo -e "\n----  Comprobando si hay permisos de root...  ----"
 if [ "$EUID" -ne 0 ]; then
     echo "El usuario actual no es root"
@@ -121,6 +145,7 @@ fi
 #########################
 # Actualizar el sistema #
 #########################
+
 echo -e "\n----  Actualizando los paquetes del sistema...  ----"
 if sudo apt update >/dev/null && sudo apt upgrade -y >/dev/null; then
     echo "Paquetes actualizados."
@@ -132,6 +157,7 @@ fi
 ###############################
 # Instalación de dependencias #
 ###############################
+
 echo -e "\n----  Instalando dependencias...  ----"
 if sudo apt install -y apache2 mariadb-server \
     libapache2-mod-php php-bz2 php-gd php-mysql php-curl \
@@ -146,6 +172,7 @@ fi
 #########################################
 # Habilitación de los módulos de apache #
 #########################################
+
 echo -e "\n----  Habilitando los módulos de Apache...  ----"
 if sudo a2enmod rewrite dir mime env headers ssl >/dev/null; then
     echo "Módulos habilitados."
@@ -158,6 +185,7 @@ sudo systemctl restart apache2
 ##########################
 # Configuración de MySQL #
 ##########################
+
 echo -e "\n----  Configurando MySQL para Nextcloud... ----"
 if sudo mysql -e \
     "CREATE USER IF NOT EXISTS '$db_user'@'localhost' IDENTIFIED BY '$db_password'; \
@@ -173,6 +201,7 @@ fi
 #######################
 # Descargar Nextcloud #
 #######################
+
 cd /var/www || {
     echo "Error al cambiar directorio. Saliendo..."
     exit
@@ -216,6 +245,7 @@ cd $nextcloud_dir || {
 ##############################
 # Configuración de Nextcloud #
 ##############################
+
 echo -e "\n----  Configurando Nextcloud...  ----"
 # En esta parte se instala y configura Nextcloud usando el comando occ.
 # El comando occ (ownCloud Console) es una herramienta de línea de comandos para administrar Nextcloud.
@@ -240,6 +270,7 @@ sudo chmod 777 $config_file
 sudo cp $config_file $backup_config
 
 agregar_linea $config_file "$cadena_a_buscar" "$linea_a_agregar"
+agregar_linea $config_file "$cadena_a_buscar" "$linea_a_agregar2"
 
 # Conceder permisos adecuados al archivo de configuración, si no se conceden, Nextcloud no funcionará correctamente
 sudo chmod 644 $config_file
@@ -248,34 +279,43 @@ sudo chown www-data:www-data $config_file
 # Reinicar el servicio de Apache para aplicar los cambios
 sudo systemctl restart apache2
 
-# Configuración de PHP
-for php_ini in /etc/php/*/apache2/php.ini; do
-    sudo sed -i 's/upload_max_filesize = .*/upload_max_filesize = 1G/' "$php_ini"
-    sudo sed -i 's/post_max_size = .*/post_max_size = 1G/' "$php_ini"
-    sudo sed -i 's/memory_limit = .*/memory_limit = 512M/' "$php_ini"
-    sudo sed -i 's/;opcache.enable=.*/opcache.enable=1/' "$php_ini"
-    sudo sed -i 's/;opcache.enable_cli=.*/opcache.enable_cli=1/' "$php_ini"
-done
-sudo systemctl restart apache2
-
-
 #######################
 # Configuración HTTPS #
 #######################
+
 mkdir -p "$cert_dir"
 # sudo mkdir -p /etc/ssl/certs
 # sudo mkdir -p /etc/ssl/private
 
+# Pedir información al usuario
+echo "Introduce los datos para el certificado SSL. Deja en blanco para usar valores genéricos."
+
+prompt PAIS "Código de país (C)" "XX"
+prompt ESTADO "Estado/Provincia (ST)" "UnknownState"
+prompt CIUDAD "Ciudad/Localidad (L)" "UnknownCity"
+prompt ORG "Organización (O)" "AnonymousOrg"
+prompt UO "Unidad organizativa (OU)" "IT"
+
+# Mostrar los valores elegidos
+echo "Generando certificado con los siguientes datos:"
+echo "C=$PAIS, ST=$ESTADO, L=$CIUDAD, O=$ORG, OU=$UO"
+
 # Generar certificado autofirmado
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+if openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
     -keyout "$cert_dir/nextcloud.key" -out "$cert_dir/nextcloud.crt" \
-    -subj "/C=XX/ST=State/L=City/O=Company/OU=Org/CN=$dominio"
-# C = Código del país (ejemplo: AR para Argentina, US para Estados Unidos).
-# ST = Estado o provincia.
-# L = Ciudad o localidad.
-# O = Nombre de la organización (se puede poner el nombre personal o el de una empresa).
-# OU = Unidad organizativa (se puede dejar vacío dejarlo vacío o poner algo como "IT").
-# CN = Nombre común, que debe ser el dominio o la IP del servidor.
+    -subj "/C=$PAIS/ST=$ESTADO/L=$CIUDAD/O=$ORG/OU=$UO/CN=$dominio" >/dev/null; then
+    # C = Código del país (ejemplo: AR para Argentina, US para Estados Unidos).
+    # ST = Estado o provincia.
+    # L = Ciudad o localidad.
+    # O = Nombre de la organización (se puede poner el nombre personal o el de una empresa).
+    # OU = Unidad organizativa (se puede dejar vacío dejarlo vacío o poner algo como "IT").
+    # CN = Nombre común, que debe ser el dominio o la IP del servidor.
+    echo "Certificado generado en $cert_dir"
+else
+    echo "No se pudo generar el certificado."
+    echo "Pruebe generarlo luego usando el comando: \
+    openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout "$cert_dir/nextcloud.key" -out "$cert_dir/nextcloud.crt" -subj ""/C=$PAIS/ST=$ESTADO/L=$CIUDAD/O=$ORG/OU=$UO/CN=$dominio"""
+fi
 
 # Crear archivo de configuración para Nextcloud
 cat >"$apache_conf" <<EOF
@@ -312,6 +352,21 @@ cat >"$apache_conf" <<EOF
 </VirtualHost>
 EOF
 
+########################
+# Configuración de PHP #
+########################
+
+# Para corregir errores dentro de Nextcloud
+for php_ini in /etc/php/*/apache2/php.ini; do
+    sudo sed -i 's|upload_max_filesize = .*|upload_max_filesize = 1G|' "$php_ini"
+    sudo sed -i 's|post_max_size = .*|post_max_size = 1G|' "$php_ini"
+    sudo sed -i 's|memory_limit = .*|memory_limit = 768M|' "$php_ini"
+    sudo sed -i 's|;opcache.enable=.*|opcache.enable=1|' "$php_ini"
+    sudo sed -i 's|;opcache.enable_cli=.*|opcache.enable_cli=1|' "$php_ini"
+    sudo sed -i "s|;overwrite.cli.url=.*|overwrite.cli.url=https://$dominio|" "$php_ini"
+done
+sudo systemctl restart apache2
+
 ###########################
 # Finalización del script #
 ###########################
@@ -320,13 +375,12 @@ if sudo systemctl is-active --quiet apache2; then
     if cat $config_file | grep "$ip" >/dev/null; then
         echo "Dirección IP local agregada a los dominios de confianza."
         echo "Nextcloud está instalado y configurado correctamente."
-        echo "Puede acceder a Nextcloud en http://$ip/ o http://localhost/."
+        echo "Puede acceder a Nextcloud en http://$dominio/ o http://localhost/."
     else
         echo "No se pudo agregar la IP a los dominios de confianza."
         echo "Nextcloud está instalado y configurado correctamente."
         echo "Puede acceder a Nextcloud en http://localhost/."
-        echo "Para acceder a Nextcloud a través de la dirección IP, agregue la dirección IP \
-        a la lista de dominios de confianza en el archivo config.php."
+        echo "Para acceder a Nextcloud a través de la dirección IP, agregue la dirección IP a la lista de dominios de confianza en el archivo config.php."
     fi
     echo " - El usuario administrador de Nextcloud es '$admin_user'."
     echo " - La contraseña del administrador de Nextcloud es '$admin_password'."
