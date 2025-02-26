@@ -6,7 +6,6 @@
 # El script instala Apache, MariaDB, PHP y otras dependencias necesarias para Nextcloud.
 # Luego descarga e instala Nextcloud, configura la base de datos y realiza otras configuraciones necesarias.
 # Al final, el script muestra la URL de Nextcloud y las credenciales de administrador.
-# Nota: Este script no maneja la configuración de SSL/TLS. Se recomienda configurar SSL/TLS para cifrar la conexión.
 # Nota: Este script no maneja la configuración de copias de seguridad. Se recomienda configurar copias de seguridad periódicas.
 
 #############
