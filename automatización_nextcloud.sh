@@ -348,19 +348,16 @@ fi
 cat >"$apache_conf" <<EOF  # TODO Evaluar la configuración y corregir si es necesario
 <VirtualHost *:$http_port>
     ServerName $dominio
-    ServerAdmin admin@$dominio
     DocumentRoot "$nextcloud_dir"
-    
-    RewriteEngine On
-    RewriteCond %{HTTPS} off
-    RewriteRule ^(.*)$ https://%{HTTP_HOST}:$https_port/\$1 [R=301,L]
+
+    Redirect permanent / https://$dominio:$https_port/
 
     ErrorLog \${APACHE_LOG_DIR}/nextcloud-http-error.log
     CustomLog \${APACHE_LOG_DIR}/nextcloud-http-access.log combined
 </VirtualHost>
 
 <VirtualHost *:$https_port>
-    ServerAdmin admin@$dominio
+    ServerName "$dominio"
     DocumentRoot "$nextcloud_dir"
 
     SSLEngine on
@@ -371,6 +368,15 @@ cat >"$apache_conf" <<EOF  # TODO Evaluar la configuración y corregir si es nec
         Require all granted
         AllowOverride All
         Options FollowSymLinks MultiViews
+        Allow from all
+        RewriteEngine On
+
+        <IfModule mod_dav.c>
+            Dav off
+        </IfModule>
+
+        SetEnv HOME $nextcloud_dir
+        SetEnv HTTP_HOME $nextcloud_dir
     </Directory>
 
     Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
