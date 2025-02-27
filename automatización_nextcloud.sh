@@ -18,11 +18,11 @@ function agregar_linea {
     if [ "$#" -ne 3 ]; then
         echo -e "Error: Se esperaban 3 argumentos, pero se recibieron $#."
         return 1
+    else
+        local archivo="$1"
+        local cadena_a_buscar="$2"
+        local linea_a_agregar="$3"
     fi
-
-    local archivo="$1"
-    local cadena_a_buscar="$2"
-    local linea_a_agregar="$3"
 
     # Usar sed para agregar la línea después de la línea que contiene la cadena a buscar
     sudo sed -i "/$cadena_a_buscar/a $linea_a_agregar" "$archivo"
