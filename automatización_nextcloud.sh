@@ -222,24 +222,29 @@ cd /var/www || {
 }
 
 if [ -f latest.zip ]; then
-    echo -e "El archivo de Nextcloud ya existe, a continuación se comprobará si es válido"
-    echo -e "\n----  Verificando la suma de comprobación de Nextcloud...  ----"
-    if sudo wget -q https://download.nextcloud.com/server/releases/latest.zip.sha256 | sudo tee -a "$logfile" >/dev/null; then
-        echo -e "Suma de comprobación descargada."
-        if sha256sum -c latest.zip.sha256 | sudo tee -a "$logfile" >/dev/null; then
-            echo -e "La suma de comprobación es válida. No hace falta descargar otra vez Nextcloud."
-        else
-            echo -e "La suma de comprobación no es válida. Se descargará Nextcloud desde cero." >&2
-            sudo rm -f latest.zip latest.zip.sha256
-            descargar_nextcloud
-        fi
-    else
-        echo -e "No se pudo descargar la suma de comprobación. Se decargará Nextcloud desde cero." >&2
-        sudo rm -f latest.zip
-    fi
-else
-    descargar_nextcloud
+    sudo rm -f latest.zip
 fi
+descargar_nextcloud
+# fixme Esto no funciona
+# if [ -f latest.zip ]; then
+#     echo -e "El archivo de Nextcloud ya existe, a continuación se comprobará si es válido"
+#     echo -e "\n----  Verificando la suma de comprobación de Nextcloud...  ----"
+#     if sudo wget -q https://download.nextcloud.com/server/releases/latest.zip.sha256 | sudo tee -a "$logfile" >/dev/null; then
+#         echo -e "Suma de comprobación descargada."
+#         if sha256sum -c latest.zip.sha256 | sudo tee -a "$logfile" >/dev/null; then
+#             echo -e "La suma de comprobación es válida. No hace falta descargar otra vez Nextcloud."
+#         else
+#             echo -e "La suma de comprobación no es válida. Se descargará Nextcloud desde cero." >&2
+#             sudo rm -f latest.zip latest.zip.sha256
+#             descargar_nextcloud
+#         fi
+#     else
+#         echo -e "No se pudo descargar la suma de comprobación. Se decargará Nextcloud desde cero." >&2
+#         sudo rm -f latest.zip
+#     fi
+# else
+#     descargar_nextcloud
+# fi
 
 echo -e "\n----  Descomprimiendo Nextcloud...  ----"
 if sudo unzip latest.zip | sudo tee -a "$logfile" >/dev/null; then
