@@ -25,7 +25,8 @@ function agregar_linea {
     fi
 
     # Usar sed para agregar la línea después de la línea que contiene la cadena a buscar
-    sudo sed -i "/$cadena_a_buscar/a $linea_a_agregar" "$archivo"
+    sudo sed -i "/$cadena_a_buscar/a\\
+$linea_a_agregar" "$archivo" | sudo tee -a "$logfile" >/dev/null
 }
 
 # Función para pedir datos con valor por defecto
