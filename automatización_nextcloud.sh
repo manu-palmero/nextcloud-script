@@ -11,7 +11,6 @@
 #############
 # Funciones #
 #############
-
 function agregar_linea {
     # Modo de uso: agregar_linea archivo.txt "cadena a buscar" "línea a agregar"
 
@@ -25,22 +24,8 @@ function agregar_linea {
     local cadena_a_buscar="$2"
     local linea_a_agregar="$3"
 
-    # Crear un archivo temporal para realizar las modificaciones
-    tempfile=$(mktemp)
-
-    # Iterar sobre cada línea del archivo
-    while IFS= read -r linea; do
-        # Agrega el contenido de la variable 'linea' al archivo temporal especificado por 'tempfile'.
-        echo -e "$linea" >>"$tempfile"
-        # Si la línea contiene la palabra a buscar, añadir la nueva línea debajo
-        if [[ "$linea" == *"$cadena_a_buscar"* ]]; then # Cadena a buscar
-            echo -e "$linea_a_agregar" >>"$tempfile"    # Línea a agregar
-        fi
-    done <"$1" # Archivo de entrada
-
-    # Reemplazar el archivo original con el archivo temporal modificado y eliminar el archivo temporal
-    sudo mv "$tempfile" "$archivo"
-    sudo rm -f "$tempfile"
+    # Usar sed para agregar la línea después de la línea que contiene la cadena a buscar
+    sudo sed -i "/$cadena_a_buscar/a $linea_a_agregar" "$archivo"
 }
 
 # Función para pedir datos con valor por defecto
