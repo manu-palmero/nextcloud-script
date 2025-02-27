@@ -343,6 +343,8 @@ if [ -f $apache_conf ]; then
     sudo rm -f $apache_conf
 fi
 
+sudo touch $apache_conf
+
 # Crear archivo de configuración para Nextcloud
 sudo cat >"$apache_conf" <<EOF
 <VirtualHost *:$http_port>
