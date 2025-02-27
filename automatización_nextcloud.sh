@@ -107,7 +107,9 @@ dominio="$(hostname).local" # Dominio
 
 cert_dir="/etc/ssl/nextcloud" # Directorio en donde se guardarán los certificados
 
-apache_conf="/etc/apache2/sites-available/nextcloud.conf" # Directorio de configuración de Apache
+apache_conf_file="nextcloud-ssl.conf"
+apache_conf_dir="/etc/apache2/sites-available"
+apache_conf="$apache_conf_dir/$apache_conf_file" # Directorio de configuración de Apache
 
 config_file="$nextcloud_dir/config/config.php" # Ruta del archivo de configuración de Nextcloud
 
@@ -372,7 +374,7 @@ EOF
 
 # Habilitar la configuración de Nextcloud en Apache
 echo -e "\n----  Habilitando la configuración de Nextcloud en Apache...  ----"
-if sudo a2ensite nextcloud.conf | sudo tee -a "$logfile" >/dev/null; then
+if sudo a2ensite $apache_conf_file | sudo tee -a "$logfile" >/dev/null; then
     echo -e "Configuración de Nextcloud habilitada en Apache."
 else
     echo -e "No se pudo habilitar la configuración de Nextcloud en Apache. Saliendo... \nRevise el archivo de registro ($logfile) para ver el error en detalle." >&2
