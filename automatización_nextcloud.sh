@@ -345,7 +345,7 @@ else
 fi
 
 # Crear archivo de configuración para Nextcloud
-cat >"$apache_conf" <<EOF  # TODO Evaluar la configuración y corregir si es necesario
+cat >"$apache_conf" <<EOF
 <VirtualHost *:$http_port>
     ServerName $dominio
     DocumentRoot "$nextcloud_dir"
