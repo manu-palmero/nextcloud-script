@@ -104,12 +104,13 @@ read -n 1 -r db_manual
 if [[ "$db_manual" =~ ^[sS]$ ]]; then
     echo -e "Ingrese el nombre de usuario de la base de datos:"
     read -r db_user
-    echo -e "Ingrese la contraseña de la base de datos:"
-    read -r db_password
+    echo -e "Ingrese la contraseña de la base de datos: (No se va a ver, pero sí está escribiendo)"
+    read -r db_password < /dev/null
 else
     db_user="nextcloud"
     db_password="password"
 fi
+echo -e "El usuario de la base de datos es $db_user y la contraseña es $db_password."
 
 # Contraseña de administrador de Nextcloud
 echo -e "\nDesea ingresar manualmente el usuario y la contraseña del administrador de Nextcloud? (s/N): \c"
@@ -117,12 +118,13 @@ read -n 1 -r admin_manual
 if [[ "$admin_manual" =~ ^[sS]$ ]]; then
     echo -e "Ingrese el nombre de usuario del administrador de Nextcloud:"
     read -r admin_user
-    echo -e "Ingrese la contraseña del administrador de Nextcloud:"
-    read -r admin_password
+    echo -e "Ingrese la contraseña del administrador de Nextcloud: (No se va a ver, pero sí está escribiendo)"
+    read -r admin_password < /dev/null
 else
     admin_user="admin"
     admin_password="password"
 fi
+echo -e "El usuario administrador para la interfaz web de Nextcloud es $admin_user y la contraseña es $admin_password."
 
 nextcloud_dir="/var/www/nextcloud" # Directorio de Nextcloud
 
