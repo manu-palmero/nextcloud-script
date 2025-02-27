@@ -60,6 +60,33 @@ function descargar_nextcloud {
     fi
 }
 
+##################
+# Verificaciones #
+##################
+
+# Verificar si el script se está ejecutando en Debian 12
+if ! grep -q -e "Debian GNU/Linux 12" -e "bookworm" /etc/os-release; then
+    if ! grep -q "Debian GNU/Linux" /etc/os-release || [ "$(grep -oP '(?<=VERSION_ID=")[0-9]+' /etc/os-release)" -lt 12 ]; then
+        echo -e "Este script está diseñado para ejecutarse en Debian 12 o posterior. Saliendo..."
+        # exit 1
+    fi
+fi
+
+# Verificar permiso de superusuario
+echo -e "\n----  Comprobando si hay permisos de root...  ----"
+if [ "$EUID" -ne 0 ]; then
+    echo -e "El usuario actual no es root"
+    echo -e "Comprobando si se puede obtener permiso de root con sudo..."
+    if sudo -v; then
+        echo -e "Hay permiso de root con sudo."
+    else
+        echo -e "No hay permiso de root, asegúrese de que el usuario actual tiene los permisos adecuados. Saliendo... \nRevise el archivo de registro ($logfile) para ver el error en detalle." >&2
+        exit 1
+    fi
+else
+    echo -e "El usuario actual es root."
+fi
+
 #############
 # Variables #
 #############
@@ -127,33 +154,6 @@ ip=${ip// /} # Eliminar todos los espacios de la variable 'ip' y asignar el resu
 
 linea_a_agregar="    2 => '$ip', // Generado con script de automatización"
 linea_a_agregar2="    1 => '$dominio', // Generado con script de automatización"
-
-##################
-# Verificaciones #
-##################
-
-# Verificar si el script se está ejecutando en Debian 12
-if ! grep -q -e "Debian GNU/Linux 12" -e "bookworm" /etc/os-release; then
-    if ! grep -q "Debian GNU/Linux" /etc/os-release || [ "$(grep -oP '(?<=VERSION_ID=")[0-9]+' /etc/os-release)" -lt 12 ]; then
-        echo -e "Este script está diseñado para ejecutarse en Debian 12 o posterior. Saliendo..."
-        # exit 1
-    fi
-fi
-
-# Verificar permiso de superusuario
-echo -e "\n----  Comprobando si hay permisos de root...  ----"
-if [ "$EUID" -ne 0 ]; then
-    echo -e "El usuario actual no es root"
-    echo -e "Comprobando si se puede obtener permiso de root con sudo..."
-    if sudo -v; then
-        echo -e "Hay permiso de root con sudo."
-    else
-        echo -e "No hay permiso de root, asegúrese de que el usuario actual tiene los permisos adecuados. Saliendo... \nRevise el archivo de registro ($logfile) para ver el error en detalle." >&2
-        exit 1
-    fi
-else
-    echo -e "El usuario actual es root."
-fi
 
 #########################
 # Actualizar el sistema #
