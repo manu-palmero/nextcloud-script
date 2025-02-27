@@ -330,7 +330,7 @@ else
 fi
 
 # Crear archivo de configuración para Nextcloud
-cat >"$apache_conf" <<EOF
+cat >"$apache_conf/nextcloud.conf" <<EOF
 <VirtualHost *:$http_port>
     ServerName $dominio
     DocumentRoot "$nextcloud_dir"
@@ -370,6 +370,15 @@ cat >"$apache_conf" <<EOF
     CustomLog \${APACHE_LOG_DIR}/nextcloud-https-access.log combined
 </VirtualHost>
 EOF
+
+# Habilitar la configuración de Nextcloud en Apache
+echo -e "\n----  Habilitando la configuración de Nextcloud en Apache...  ----"
+if sudo a2ensite nextcloud.conf | sudo tee -a "$logfile" >/dev/null; then
+    echo -e "Configuración de Nextcloud habilitada en Apache."
+else
+    echo -e "No se pudo habilitar la configuración de Nextcloud en Apache. Saliendo... \nRevise el archivo de registro ($logfile) para ver el error en detalle." >&2
+    exit 1
+fi
 
 ########################
 # Configuración de PHP #
