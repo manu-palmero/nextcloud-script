@@ -313,9 +313,7 @@ echo -e "Generando certificado con los siguientes datos:"
 echo -e "C=$PAIS, ST=$ESTADO, L=$CIUDAD, O=$ORG, OU=$UO"
 
 # Generar certificado autofirmado
-if openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-    -keyout "$cert_dir/nextcloud.key" -out "$cert_dir/nextcloud.crt" \
-    -subj "/C=$PAIS/ST=$ESTADO/L=$CIUDAD/O=$ORG/OU=$UO/CN=$dominio" | sudo tee -a "$logfile" >/dev/null; then
+if sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout "$cert_dir/nextcloud.key" -out "$cert_dir/nextcloud.crt" -subj "/C=$PAIS/ST=$ESTADO/L=$CIUDAD/O=$ORG/OU=$UO/CN=$dominio" | sudo tee -a "$logfile" >/dev/null; then
     # C = Código del país (ejemplo: AR para Argentina, US para Estados Unidos).
     # ST = Estado o provincia.
     # L = Ciudad o localidad.
