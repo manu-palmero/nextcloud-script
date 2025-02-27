@@ -204,7 +204,7 @@ if sudo mysql -e \
         CREATE DATABASE IF NOT EXISTS nextcloud CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; \
         GRANT ALL PRIVILEGES ON nextcloud.* TO '$db_user'@'localhost'; \
         FLUSH PRIVILEGES;"; then
-    echo -e "MySQL configurado para Nextcloud."
+    echo -e "MySQL configurado para Nextcloud, el usuario es '$db_user' y la contraseña '$db_password'."
 else
     echo -e "No se pudo configurar MySQL para Nextcloud. Saliendo... \nRevise el archivo de registro ($logfile) para ver el error en detalle." >&2
     exit 1
@@ -323,13 +323,13 @@ if sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout "$cert_dir/n
     # CN = Nombre común, que debe ser el dominio o la IP del servidor.
     echo -e "Certificado generado en $cert_dir"
 else
-    echo -e "No se pudo generar el certificado." >&2
+    echo -e "No se pudo generar el certifiscado." >&2
     echo -e "Pruebe generarlo luego usando el comando: \
     openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout "$cert_dir/nextcloud.key" -out "$cert_dir/nextcloud.crt" -subj ""/C=$PAIS/ST=$ESTADO/L=$CIUDAD/O=$ORG/OU=$UO/CN=$dominio""" >&2
 fi
 
 # Crear archivo de configuración para Nextcloud
-cat >"$apache_conf/nextcloud.conf" <<EOF
+sudo cat >"$apache_conf/nextcloud.conf" <<EOF
 <VirtualHost *:$http_port>
     ServerName $dominio
     DocumentRoot "$nextcloud_dir"
