@@ -107,7 +107,7 @@ dominio="$(hostname).local" # Dominio
 
 cert_dir="/etc/ssl/nextcloud" # Directorio en donde se guardarán los certificados
 
-apache_conf="/etc/apache2/sites-available" # Directorio de configuración de Apache
+apache_conf="/etc/apache2/sites-available/nextcloud.conf" # Directorio de configuración de Apache
 
 config_file="$nextcloud_dir/config/config.php" # Ruta del archivo de configuración de Nextcloud
 
@@ -204,7 +204,7 @@ if sudo mysql -e \
         CREATE DATABASE IF NOT EXISTS nextcloud CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; \
         GRANT ALL PRIVILEGES ON nextcloud.* TO '$db_user'@'localhost'; \
         FLUSH PRIVILEGES;"; then
-    echo -e "MySQL configurado para Nextcloud, el usuario es '$db_user' y la contraseña '$db_password'."
+    echo -e "MySQL configurado para Nextcloud, la base de datos es 'nextcloud', el usuario es '$db_user' y la contraseña '$db_password'."
 else
     echo -e "No se pudo configurar MySQL para Nextcloud. Saliendo... \nRevise el archivo de registro ($logfile) para ver el error en detalle." >&2
     exit 1
@@ -328,16 +328,19 @@ else
     openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout "$cert_dir/nextcloud.key" -out "$cert_dir/nextcloud.crt" -subj ""/C=$PAIS/ST=$ESTADO/L=$CIUDAD/O=$ORG/OU=$UO/CN=$dominio""" >&2
 fi
 
+# Borrar configuración de apache en caso de que se cree con el comando de instalación de nextcloud 
+if [ -f $apache_conf ]; then
+    echo -e "Borrando configuración antigua de apache..."
+    sudo rm -f $apache_conf
+fi
+
 # Crear archivo de configuración para Nextcloud
-sudo cat >"$apache_conf/nextcloud.conf" <<EOF
+sudo cat >"$apache_conf" <<EOF
 <VirtualHost *:$http_port>
     ServerName $dominio
     DocumentRoot "$nextcloud_dir"
 
     Redirect permanent / https://$dominio:$https_port/
-
-    ErrorLog \${APACHE_LOG_DIR}/nextcloud-http-error.log
-    CustomLog \${APACHE_LOG_DIR}/nextcloud-http-access.log combined
 </VirtualHost>
 
 <VirtualHost *:$https_port>
@@ -364,9 +367,6 @@ sudo cat >"$apache_conf/nextcloud.conf" <<EOF
     </Directory>
 
     Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-
-    ErrorLog \${APACHE_LOG_DIR}/nextcloud-https-error.log
-    CustomLog \${APACHE_LOG_DIR}/nextcloud-https-access.log combined
 </VirtualHost>
 EOF
 
