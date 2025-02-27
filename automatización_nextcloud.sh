@@ -110,7 +110,7 @@ apache_conf="/etc/apache2/sites-available" # Directorio de configuración de Apa
 
 config_file="$nextcloud_dir/config/config.php" # Ruta del archivo de configuración de Nextcloud
 
-backup_config="/var/www/html/config/config.php.backup" # Ruta del archivo de copia de seguridad del archivo de configuración de Nextcloud
+backup_config="$nextcloud_dir/config/config.php.backup" # Ruta del archivo de copia de seguridad del archivo de configuración de Nextcloud
 
 cadena_a_buscar="0 => 'localhost'," # Cadena a buscar en el archivo de configuración de Nextcloud
 
@@ -295,7 +295,7 @@ sudo systemctl restart apache2
 # Configuración HTTPS #
 #######################
 
-mkdir -p "$cert_dir"
+sudo mkdir -p "$cert_dir"
 
 # Pedir información al usuario
 echo -e "Introduce los datos para el certificado SSL. Deja en blanco para usar valores genéricos."
