@@ -146,10 +146,6 @@ echo -e "El usuario administrador para la interfaz web de Nextcloud es $admin_us
 
 nextcloud_dir="/var/www/nextcloud" # Directorio de Nextcloud
 
-http_port="8080" # Puerto http
-
-https_port="5555" # Puerto https
-
 dominio="$(hostname).local" # Dominio
 
 cert_dir="/etc/ssl/nextcloud" # Directorio en donde se guardarán los certificados
@@ -166,14 +162,12 @@ cadena_a_buscar="0 => 'localhost'," # Cadena a buscar en el archivo de configura
 
 ip=$(hostname -I) # Dirección IP de la máquina
 # Nota: Esto aún no maneja múltiples direcciones IP en la misma máquina, pero se puede mejorar en el futuro
-
 ip=${ip// /} # Eliminar todos los espacios de la variable 'ip' y asignar el resultado de nuevo a 'ip'
 # Al usar hostname -I, se obtiene una cadena con la dirección IP seguida de un espacio
 # Se usa el formato ${variable//buscar/reemplazar} para reemplazar todas las ocurrencias de 'buscar' con 'reemplazar' en 'variable'
 # En este caso, 'buscar' es un espacio ' ' y 'reemplazar' es una cadena vacía ''
 
-linea_a_agregar="    2 => '$ip', // Generado con script de automatización"
-linea_a_agregar2="    1 => '$dominio', // Generado con script de automatización"
+
 
 #########################
 # Actualizar el sistema #
@@ -299,26 +293,6 @@ else
     exit 1
 fi
 
-##########################################
-# Agregar IP a los dominios de confianza #
-##########################################
-
-# Agregar permisos al archivo para evitar problemas
-sudo chmod 777 $config_file
-
-# Crear copia de seguridad de las configuraciones originales
-sudo cp $config_file $backup_config
-
-agregar_linea $config_file "$cadena_a_buscar" "$linea_a_agregar"
-agregar_linea $config_file "$cadena_a_buscar" "$linea_a_agregar2"
-
-# Conceder permisos adecuados al archivo de configuración, si no se conceden, Nextcloud no funcionará correctamente
-sudo chmod 644 $config_file
-sudo chown www-data:www-data $config_file
-
-# Reinicar el servicio de Apache para aplicar los cambios
-sudo systemctl restart apache2
-
 #######################
 # Configuración HTTPS #
 #######################
@@ -333,7 +307,7 @@ prompt ESTADO "Estado/Provincia (ST)" "UnknownState"
 prompt CIUDAD "Ciudad/Localidad (L)" "UnknownCity"
 prompt ORG "Organización (O)" "AnonymousOrg"
 prompt UO "Unidad organizativa (OU)" "IT"
-# prompt NC "Dominio o IP" "$dominio" # Aún no se usa
+prompt NC "Dominio o IP" "$dominio" # Aún no se usa el dominio, así que se puede dejar en blanco (por defecto) y no va a afectar el funcionamiento del script
 # TODO Aquí se puede usar la entrada para el dominio en caso de que se use fuera del ámbito local, en tal caso, la configuración de los dominios de confianza debería estar luego de este apartado y usar la variable NC en lugar de dominio
 
 # Mostrar los valores elegidos
@@ -364,7 +338,6 @@ fi
 echo -e "\n----  Deshabilitando la configuración predeterminada de Apache...  ----"
 for config in /etc/apache2/sites-available/*; do
     sudo a2dissite "$(basename "$config")" | sudo tee -a "$logfile" >/dev/null
-    sudo rm -f "$config"
 done
 
 sudo chmod 644 $apache_conf_dir
@@ -375,17 +348,10 @@ sudo chmod 644 $apache_conf
 sudo bash -c "cat >'$apache_conf' <<EOF
 <VirtualHost *:80>
     ServerName '$ip'
-    Redirect permanent / https://$ip:$https_port/
+    Redirect permanent / https://$ip:443/
 </VirtualHost>
 
-<VirtualHost *:$http_port>
-    ServerName '$ip'
-    DocumentRoot '$nextcloud_dir'
-
-    Redirect permanent / https://$ip:$https_port/
-</VirtualHost>
-
-<VirtualHost *:$https_port>
+<VirtualHost *:443>
     ServerName '$ip'
     DocumentRoot '$nextcloud_dir'
 
@@ -412,21 +378,6 @@ sudo bash -c "cat >'$apache_conf' <<EOF
 </VirtualHost>
 EOF"
 
-if [ -f /etc/apache2/ports.conf ]; then
-    # Configurar Apache para escuchar en los puertos HTTP y HTTPS especificados
-    echo -e "\n----  Configurando Apache para escuchar en los puertos HTTP y HTTPS...  ----"
-    sudo sed -i "/Listen 80/ a\Listen $http_port" /etc/apache2/ports.conf
-    sudo sed -i "s|Listen 443|Listen $https_port https|" /etc/apache2/ports.conf
-else
-    sudo touch /etc/apache2/ports.conf
-    sudo chmod 644 /etc/apache2/ports.conf
-    sudo bash -c "cat >'/etc/apache2/ports.conf' <<EOF
-Listen 80
-Listen $http_port
-Listen $https_port https
-EOF"
-fi
-
 # Habilitar la configuración de Nextcloud en Apache
 echo -e "\n----  Habilitando la configuración de Nextcloud en Apache...  ----"
 if sudo a2ensite $apache_conf_file | sudo tee -a "$logfile" >/dev/null; then
@@ -448,8 +399,31 @@ for php_ini in /etc/php/*/apache2/php.ini; do
     sudo sed -i 's|memory_limit = .*|memory_limit = 768M|' "$php_ini"
     sudo sed -i 's|;opcache.enable=.*|opcache.enable=1|' "$php_ini"
     sudo sed -i 's|;opcache.enable_cli=.*|opcache.enable_cli=1|' "$php_ini"
-    sudo sed -i "s|;overwrite.cli.url=.*|overwrite.cli.url=https://$dominio|" "$php_ini"
+    # sudo sed -i "s|;overwrite.cli.url=.*|overwrite.cli.url=https://$NC|" "$php_ini" # FIXME Por ahora da problemas debido a que en las pruebas, por ahora, el dominio no se usa.
 done
+sudo systemctl restart apache2
+
+##########################################
+# Agregar IP a los dominios de confianza #
+##########################################
+
+linea_a_agregar="    2 => '$ip', // Generado con script de automatización"
+linea_a_agregar2="    1 => '$NC', // Generado con script de automatización"
+
+# Agregar permisos al archivo para evitar problemas
+sudo chmod 777 $config_file
+
+# Crear copia de seguridad de las configuraciones originales
+sudo cp $config_file $backup_config
+
+agregar_linea $config_file "$cadena_a_buscar" "$linea_a_agregar"
+agregar_linea $config_file "$cadena_a_buscar" "$linea_a_agregar2"
+
+# Conceder permisos adecuados al archivo de configuración, si no se conceden, Nextcloud no funcionará correctamente
+sudo chmod 644 $config_file
+sudo chown www-data:www-data $config_file
+
+# Reinicar el servicio de Apache para aplicar los cambios
 sudo systemctl restart apache2
 
 ###########################
@@ -461,7 +435,7 @@ if sudo systemctl is-active --quiet apache2; then
         echo -e "Dirección IP local agregada a los dominios de confianza."
         echo -e "Nextcloud está instalado y configurado correctamente."
         echo -e "Puede acceder a Nextcloud en https://$ip o https://localhost/."
-        # echo -e "Puede acceder a Nextcloud en http://$dominio/, http://$ip o http://localhost/." # Por ahora no va a usarse el dominio
+        # echo -e "Puede acceder a Nextcloud en http://$dominio/, http://$ip o http://localhost/." # Por ahora no va a usarse el dominio.
     else
         echo -e "No se pudo agregar la IP a los dominios de confianza." >&2
         echo -e "Nextcloud está instalado y configurado correctamente."
