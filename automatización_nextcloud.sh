@@ -180,8 +180,8 @@ linea_a_agregar2="    1 => '$dominio', // Generado con script de automatización
 #########################
 
 echo -e "\n----  Actualizando los paquetes del sistema...  ----"
-if sudo apt update | sudo tee -a "$logfile" >/dev/null &&
-    sudo apt upgrade -y | sudo tee -a "$logfile" >/dev/null; then
+if sudo apt-get update | sudo tee -a "$logfile" >/dev/null &&
+    sudo apt-get upgrade -y | sudo tee -a "$logfile" >/dev/null; then
     echo -e "Paquetes actualizados."
 else
     echo -e "No se puedieron actualizar los paquetes. Saliendo... \nRevise el archivo de registro ($logfile) para ver el error en detalle." >&2
@@ -193,7 +193,7 @@ fi
 ###############################
 
 echo -e "\n----  Instalando dependencias...  ----"
-if sudo apt install -y apache2 mariadb-server \
+if sudo apt-get install -y apache2 mariadb-server \
     libapache2-mod-php php-bz2 php-gd php-mysql php-curl \
     php-mbstring php-imagick php-zip php-ctype php-curl php-dom php-json php-posix \
     php-bcmath php-xml php-intl php-gmp zip unzip wget openssl coreutils | sudo tee -a "$logfile" >/dev/null; then
