@@ -103,14 +103,14 @@ echo -e "\nDesea ingresar manualmente el usuario y la contraseña de la base de 
 read -n 1 -r db_manual # -n 1 para leer solo un carácter, -r para evitar que se interprete la barra invertida
 if [[ "$db_manual" =~ ^[sS]$ ]]; then
     echo
-    echo -e "Ingrese el nombre de usuario de la base de datos:"
+    echo -e "Ingrese el nombre de usuario de la base de datos: \c"
     read -r db_user
     if [ -z "$db_user" ]; then # -x comprueba si la cadena está vacía
         db_user="nextcloud"
         echo -e "Dejó la entrada vacía. Se usará el nombre de usuario predeterminado 'nextcloud'."
     fi
-    echo -e "Ingrese la contraseña de la base de datos: (No se va a ver, pero sí está escribiendo)"
-    read -s -r db_password
+    echo -e "Ingrese la contraseña de la base de datos: \c"
+    read -r db_password
     if [ -z "$db_password" ]; then
         db_password="password"
         echo -e "Dejó la entrada vacía. Se usará la contraseña predeterminada 'password'."
@@ -126,16 +126,14 @@ echo -e "\nDesea ingresar manualmente el usuario y la contraseña del administra
 read -n 1 -r admin_manual
 if [[ "$admin_manual" =~ ^[sS]$ ]]; then
     echo
-    echo -e "Ingrese el nombre de usuario del administrador de Nextcloud:"
+    echo -e "Ingrese el nombre de usuario del administrador de Nextcloud: \c"
     read -r admin_user
     if [ -z "$admin_user" ]; then # -x comprueba si la cadena está vacía
         admin_user="admin"
         echo -e "Dejó la entrada vacía. Se usará el nombre de usuario predeterminado 'admin'."
     fi
-    echo -e "Ingrese la contraseña del administrador de Nextcloud: (No se va a ver, pero sí está escribiendo)"
-    # La opción -s en el comando read hace que la entrada del usuario no se muestre en la terminal, 
-    # lo que es útil para ingresar contraseñas de manera segura.
-    read -s -r admin_password
+    echo -e "Ingrese la contraseña del administrador de Nextcloud: \c"
+    read -r admin_password
     if [ -z "$admin_password" ]; then
         admin_password="password"
         echo -e "Dejó la entrada vacía. Se usará la contraseña predeterminada 'password'."
