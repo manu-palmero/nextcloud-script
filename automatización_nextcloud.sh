@@ -245,7 +245,7 @@ if [ -f latest.zip ]; then
     sudo rm -f latest.zip
 fi
 descargar_nextcloud
-# fixme Esto no funciona
+# FIXME Esto no funciona
 # if [ -f latest.zip ]; then
 #     echo -e "El archivo de Nextcloud ya existe, a continuación se comprobará si es válido"
 #     echo -e "\n----  Verificando la suma de comprobación de Nextcloud...  ----"
@@ -333,8 +333,8 @@ prompt ESTADO "Estado/Provincia (ST)" "UnknownState"
 prompt CIUDAD "Ciudad/Localidad (L)" "UnknownCity"
 prompt ORG "Organización (O)" "AnonymousOrg"
 prompt UO "Unidad organizativa (OU)" "IT"
-prompt NC "Dominio o IP" "$dominio" # Aún no se usa
-# TODO Aquí podría haber otra entrada para el dominio en caso de que se use fuera del ámbito local, en tal caso, la configuración de los dominios de confianza debería estar luego de este apartado y usar la variable NC en lugar de dominio
+# prompt NC "Dominio o IP" "$dominio" # Aún no se usa
+# TODO Aquí se puede usar la entrada para el dominio en caso de que se use fuera del ámbito local, en tal caso, la configuración de los dominios de confianza debería estar luego de este apartado y usar la variable NC en lugar de dominio
 
 # Mostrar los valores elegidos
 echo -e "Generando certificado con los siguientes datos:"
@@ -360,6 +360,12 @@ if [ -f $apache_conf ]; then
     echo -e "Borrando configuración antigua de apache..."
     sudo rm -f $apache_conf
 fi
+# Deshabilitar la configuración predeterminada de Apache
+echo -e "\n----  Deshabilitando la configuración predeterminada de Apache...  ----"
+for config in /etc/apache2/sites-available/*; do
+    sudo a2dissite "$(basename "$config")" | sudo tee -a "$logfile" >/dev/null
+    sudo rm -f "$config"
+done
 
 sudo chmod 644 $apache_conf_dir
 sudo touch $apache_conf
@@ -367,15 +373,20 @@ sudo chmod 644 $apache_conf
 
 # Crear archivo de configuración para Nextcloud
 sudo bash -c "cat >'$apache_conf' <<EOF
+<VirtualHost *:80>
+    ServerName '$ip'
+    Redirect permanent / https://$ip:$https_port/
+</VirtualHost>
+
 <VirtualHost *:$http_port>
-    ServerName $dominio
+    ServerName '$ip'
     DocumentRoot '$nextcloud_dir'
 
-    Redirect permanent / https://$dominio:$https_port/
+    Redirect permanent / https://$ip:$https_port/
 </VirtualHost>
 
 <VirtualHost *:$https_port>
-    ServerName '$dominio'
+    ServerName '$ip'
     DocumentRoot '$nextcloud_dir'
 
     SSLEngine on
@@ -401,10 +412,26 @@ sudo bash -c "cat >'$apache_conf' <<EOF
 </VirtualHost>
 EOF"
 
+if [ -f /etc/apache2/ports.conf ]; then
+    # Configurar Apache para escuchar en los puertos HTTP y HTTPS especificados
+    echo -e "\n----  Configurando Apache para escuchar en los puertos HTTP y HTTPS...  ----"
+    sudo sed -i "/Listen 80/ a\Listen $http_port" /etc/apache2/ports.conf
+    sudo sed -i "s|Listen 443|Listen $https_port https|" /etc/apache2/ports.conf
+else
+    sudo touch /etc/apache2/ports.conf
+    sudo chmod 644 /etc/apache2/ports.conf
+    sudo bash -c "cat >'/etc/apache2/ports.conf' <<EOF
+Listen 80
+Listen $http_port
+Listen $https_port https
+EOF"
+fi
+
 # Habilitar la configuración de Nextcloud en Apache
 echo -e "\n----  Habilitando la configuración de Nextcloud en Apache...  ----"
 if sudo a2ensite $apache_conf_file | sudo tee -a "$logfile" >/dev/null; then
     echo -e "Configuración de Nextcloud habilitada en Apache."
+    sudo systemctl restart apache2
 else
     echo -e "No se pudo habilitar la configuración de Nextcloud en Apache. Saliendo... \nRevise el archivo de registro ($logfile) para ver el error en detalle." >&2
     exit 1
@@ -433,7 +460,8 @@ if sudo systemctl is-active --quiet apache2; then
     if cat $config_file | grep -e "$ip" -e "$dominio" | sudo tee -a "$logfile" >/dev/null; then
         echo -e "Dirección IP local agregada a los dominios de confianza."
         echo -e "Nextcloud está instalado y configurado correctamente."
-        echo -e "Puede acceder a Nextcloud en http://$dominio/, http://$ip o http://localhost/."
+        echo -e "Puede acceder a Nextcloud en http://$ip o http://localhost/."
+        # echo -e "Puede acceder a Nextcloud en http://$dominio/, http://$ip o http://localhost/." # Por ahora no va a usarse el dominio
     else
         echo -e "No se pudo agregar la IP a los dominios de confianza." >&2
         echo -e "Nextcloud está instalado y configurado correctamente."
