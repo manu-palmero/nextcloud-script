@@ -460,7 +460,7 @@ if sudo systemctl is-active --quiet apache2; then
     if cat $config_file | grep -e "$ip" -e "$dominio" | sudo tee -a "$logfile" >/dev/null; then
         echo -e "Dirección IP local agregada a los dominios de confianza."
         echo -e "Nextcloud está instalado y configurado correctamente."
-        echo -e "Puede acceder a Nextcloud en http://$ip o http://localhost/."
+        echo -e "Puede acceder a Nextcloud en https://$ip o https://localhost/."
         # echo -e "Puede acceder a Nextcloud en http://$dominio/, http://$ip o http://localhost/." # Por ahora no va a usarse el dominio
     else
         echo -e "No se pudo agregar la IP a los dominios de confianza." >&2
