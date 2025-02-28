@@ -75,7 +75,7 @@ fi
 # Verificar permiso de superusuario
 echo -e "\n----  Comprobando si hay permisos de root...  ----"
 if [ "$EUID" -ne 0 ]; then
-    echo -e "El usuario actual no es root"
+    echo -e "El usuario actual no es root."
     echo -e "Comprobando si se puede obtener permiso de root con sudo..."
     if sudo -v; then
         echo -e "Hay permiso de root con sudo."
@@ -100,12 +100,13 @@ exec > >(tee -a "$logfile")
 
 # Contraseña de la base de datos
 echo -e "\nDesea ingresar manualmente el usuario y la contraseña de la base de datos? (s/N): \c"
-read -n 1 -r db_manual
+read -n 1 -r db_manual # -n 1 para leer solo un carácter, -r para evitar que se interprete la barra invertida
 if [[ "$db_manual" =~ ^[sS]$ ]]; then
+    echo
     echo -e "Ingrese el nombre de usuario de la base de datos:"
     read -r db_user
     echo -e "Ingrese la contraseña de la base de datos: (No se va a ver, pero sí está escribiendo)"
-    read -r db_password < /dev/null
+    read -s -r db_password
 else
     db_user="nextcloud"
     db_password="password"
@@ -116,10 +117,13 @@ echo -e "El usuario de la base de datos es $db_user y la contraseña es $db_pass
 echo -e "\nDesea ingresar manualmente el usuario y la contraseña del administrador de Nextcloud? (s/N): \c"
 read -n 1 -r admin_manual
 if [[ "$admin_manual" =~ ^[sS]$ ]]; then
+    echo
     echo -e "Ingrese el nombre de usuario del administrador de Nextcloud:"
     read -r admin_user
     echo -e "Ingrese la contraseña del administrador de Nextcloud: (No se va a ver, pero sí está escribiendo)"
-    read -r admin_password < /dev/null
+    # La opción -s en el comando read hace que la entrada del usuario no se muestre en la terminal, 
+    # lo que es útil para ingresar contraseñas de manera segura.
+    read -s -r admin_password
 else
     admin_user="admin"
     admin_password="password"
@@ -337,7 +341,7 @@ else
     openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout "$cert_dir/nextcloud.key" -out "$cert_dir/nextcloud.crt" -subj ""/C=$PAIS/ST=$ESTADO/L=$CIUDAD/O=$ORG/OU=$UO/CN=$dominio""" >&2
 fi
 
-# Borrar configuración de apache en caso de que se cree con el comando de instalación de nextcloud 
+# Borrar configuración de apache en caso de que se cree con el comando de instalación de nextcloud
 if [ -f $apache_conf ]; then
     echo -e "Borrando configuración antigua de apache..."
     sudo rm -f $apache_conf
