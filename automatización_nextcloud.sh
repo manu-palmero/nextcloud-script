@@ -343,26 +343,28 @@ if [ -f $apache_conf ]; then
     sudo rm -f $apache_conf
 fi
 
+sudo chmod 644 $apache_conf_dir
 sudo touch $apache_conf
+sudo chmod 644 $apache_conf
 
 # Crear archivo de configuración para Nextcloud
-sudo cat >"$apache_conf" <<EOF
+sudo bash -c "cat >'$apache_conf' <<EOF
 <VirtualHost *:$http_port>
     ServerName $dominio
-    DocumentRoot "$nextcloud_dir"
+    DocumentRoot '$nextcloud_dir'
 
     Redirect permanent / https://$dominio:$https_port/
 </VirtualHost>
 
 <VirtualHost *:$https_port>
-    ServerName "$dominio"
-    DocumentRoot "$nextcloud_dir"
+    ServerName '$dominio'
+    DocumentRoot '$nextcloud_dir'
 
     SSLEngine on
-    SSLCertificateFile "$cert_dir/nextcloud.crt"
-    SSLCertificateKeyFile "$cert_dir/nextcloud.key"
+    SSLCertificateFile '$cert_dir/nextcloud.crt'
+    SSLCertificateKeyFile '$cert_dir/nextcloud.key'
 
-    <Directory "$nextcloud_dir">
+    <Directory '$nextcloud_dir'>
         Require all granted
         AllowOverride All
         Options FollowSymLinks MultiViews
@@ -377,9 +379,9 @@ sudo cat >"$apache_conf" <<EOF
         SetEnv HTTP_HOME $nextcloud_dir
     </Directory>
 
-    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    Header always set Strict-Transport-Security 'max-age=31536000; includeSubDomains; preload'
 </VirtualHost>
-EOF
+EOF"
 
 # Habilitar la configuración de Nextcloud en Apache
 echo -e "\n----  Habilitando la configuración de Nextcloud en Apache...  ----"
