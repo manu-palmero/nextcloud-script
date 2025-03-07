@@ -8,6 +8,76 @@
 # Al final, el script muestra la URL de Nextcloud y las credenciales de administrador.
 # Nota: Este script no maneja la configuración de copias de seguridad. Se recomienda configurar copias de seguridad periódicas.
 
+#####################
+# Manejo de opciones #
+#####################
+
+# Variables para opciones
+verbose=false
+example_flag=false
+
+# Función para mostrar ayuda
+function mostrar_ayuda {
+    echo "Uso: $0 [opciones]"
+    echo "Opciones:"
+    echo "  -h, --help          Muestra esta ayuda y sale"
+    echo "  -v, --verbose       Activa el modo detallado"
+    echo "  -e, --example       Activa la opción de ejemplo"
+    exit 0
+}
+
+# Procesar opciones
+while [[ "$#" -gt 0 ]]; do 
+    case $1 in
+        -h|--help)
+            mostrar_ayuda
+            ;;
+        -v|--verbose)
+            verbose=true
+            ;;
+        -e|--example)
+            example_flag=true
+            ;;
+        -*)
+            # ${#1} es la longitud de la cadena pasada como primer argumento ($1).
+            for (( i=1; i<${#1}; i++ )); do 
+                # La expresión ${1:$i:1} obtiene el carácter en la posición i de la cadena $1.
+                # Es como poner en python 1[i] o en java 1.charAt(i).
+                case "${1:$i:1}" in
+                    h)
+                        mostrar_ayuda
+                        ;;
+                    v)
+                        verbose=true
+                        ;;
+                    e)
+                        example_flag=true
+                        ;;
+                    *)
+                        echo "Opción no reconocida: -${1:$i:1}"
+                        mostrar_ayuda
+                        ;;
+                esac
+            done
+            ;;
+        *)
+            echo "Opción no reconocida: $1"
+            mostrar_ayuda
+            ;;
+    esac
+    shift # Elimina el primer argumento ($1) de la lista de argumentos. Ahora $2 pasa a ser $1, $3 pasa a ser $2, y así sucesivamente.
+done
+
+# Modo detallado
+if [ "$verbose" = true ]; then
+    set -x # Activa el modo detallado
+fi
+
+# Ejemplo de uso de la opción de ejemplo
+if [ "$example_flag" = true ]; then
+    echo "La opción de ejemplo está activada."
+fi
+
 #############
 # Funciones #
 #############
